@@ -1,0 +1,26 @@
+{
+  "name": "canvas-glide",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/canvas-glide.js",
+      "types": "./dist/canvas-glide.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --watch",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
+    "vite-plugin-dts": "^5.0.3"
+  }
+}
