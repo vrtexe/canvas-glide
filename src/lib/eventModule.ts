@@ -110,7 +110,9 @@ export function canvasPointerEvents(props: CanvasPointerEventProps): CanvasPoint
     e.stopPropagation();
     e.preventDefault();
 
-    scaleModule.wheelScale(e.deltaY, extractPoint(e));
+    const unit = (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 800 : 1) * (e.ctrlKey ? 10 : 1);
+    const deltaPx = Math.max(-120, Math.min(120, e.deltaY * unit));
+    scaleModule.wheelScale(deltaPx, extractPoint(e));
   };
 
   return {

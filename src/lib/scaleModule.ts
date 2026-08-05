@@ -1,7 +1,7 @@
 import { calculateDistance, calculateMiddlePoint, convertToRelativeCoords, type Point, type Rect } from "./pointUtils";
 import { copyPoint, copyTransform, type EngineState, type Transform } from "./state";
 
-export const WHEEL_SCALE_VELOCITY = 0.075;
+export const WHEEL_SCALE_VELOCITY = 0.0015;
 export const ZOOM_STEP = 0.1;
 
 export type ScaleOptions = {
@@ -104,12 +104,8 @@ export function createScaleModule(config: ScaleConfig): ScaleModule {
       config.scale(nextScale, origin);
     },
     wheelScale(scroll, absolutePoint) {
-      const rect = config.rect();
-      const point = convertToRelativeCoords(absolutePoint, rect);
-
-      const wheel = scroll < 0 ? 1 : -1;
-      const zoom = Math.exp(wheel * wheelVelocity);
-
+      const point = convertToRelativeCoords(absolutePoint, config.rect());
+      const zoom = Math.exp(-scroll * wheelVelocity);
       scaleAt(zoom, point);
     },
     buttonScale(newScale) {
