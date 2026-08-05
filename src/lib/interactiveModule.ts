@@ -1,8 +1,8 @@
 import type { Rect } from './pointUtils';
 import { canvasPointerEvents } from './eventModule';
-import createMovementModule, { type MoveOptions } from './moveModule';
+import { createMovementModule, type MoveOptions } from './moveModule';
 import { type Point } from './pointUtils';
-import createScaleModule, { type ScaleOptions } from './scaleModule';
+import { createScaleModule, type ScaleOptions } from './scaleModule';
 import type { EngineState } from './state';
 import {
   createOriginConstrainer,
@@ -26,7 +26,7 @@ export type InteractiveCanvasModuleProps = {
   getViewportRect: () => Rect;
 };
 
-export default function createInteractiveCanvasModule(
+export function createInteractiveCanvasModule(
   props: InteractiveCanvasModuleProps,
 ) {
   const { state, getViewportRect, constraints } = props;
@@ -68,6 +68,5 @@ export default function createInteractiveCanvasModule(
     scaleService,
     moveService,
     events,
-    isMoving: true,
   };
 }

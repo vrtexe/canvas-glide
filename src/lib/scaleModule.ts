@@ -1,22 +1,13 @@
-import {
-  calculateDistance,
-  calculateMiddlePoint,
-  convertToRelativeCoords,
-  type Point,
-  type Rect,
-} from './pointUtils';
-import {
-  copyPoint,
-  copyTransform,
-  type EngineState,
-  type Transform,
-} from './state';
+import { calculateDistance, calculateMiddlePoint, convertToRelativeCoords, type Point, type Rect } from "./pointUtils";
+import { copyPoint, copyTransform, type EngineState, type Transform } from "./state";
 
 export const WHEEL_SCALE_VELOCITY = 0.075;
 export const ZOOM_STEP = 0.1;
 
 export type ScaleOptions = {
   enabled?: boolean;
+  wheelVelocity?: number | undefined;
+  zoomStep?: number | undefined;
 };
 
 export type ScaleConfig = ScaleOptions & {
@@ -35,13 +26,16 @@ export type ScaleModule = {
   zoomIn: (step?: number) => void;
   zoomOut: (step?: number) => void;
   gestureScale: (pointes: Iterable<Point>) => void;
-  wheelScale: (scroll: number, getAbsolutePoint: () => Point) => void;
+  wheelScale: (scroll: number, absolutePoint: Point) => void;
   buttonScale: (newScale: number) => void;
   buttonScaleBy: (delta: number) => void;
   isEnabled: () => boolean;
 };
 
-export default function createScaleModule(config: ScaleConfig): ScaleModule {
+export function createScaleModule(config: ScaleConfig): ScaleModule {
+  const wheelVelocity = config.wheelVelocity || WHEEL_SCALE_VELOCITY;
+  const zoomStep = config.zoomStep || ZOOM_STEP;
+
   let startPoints: Point[] = [];
   let startState: Transform | undefined;
 
@@ -100,9 +94,7 @@ export default function createScaleModule(config: ScaleConfig): ScaleModule {
       const startMid = midpoint(startP1, startP2);
       const currentMid = midpoint(p1, p2);
 
-      const nextScale = config.constrainScale(
-        startScale * (currentDistance / startDistance),
-      );
+      const nextScale = config.constrainScale(startScale * (currentDistance / startDistance));
 
       const origin: Point = {
         x: startOrigin.x + startMid.x / startScale - currentMid.x / nextScale,
@@ -111,13 +103,12 @@ export default function createScaleModule(config: ScaleConfig): ScaleModule {
 
       config.scale(nextScale, origin);
     },
-    wheelScale(scroll, getAbsolutePoint) {
+    wheelScale(scroll, absolutePoint) {
       const rect = config.rect();
-      const absolutePoint = getAbsolutePoint();
       const point = convertToRelativeCoords(absolutePoint, rect);
 
       const wheel = scroll < 0 ? 1 : -1;
-      const zoom = Math.exp(wheel * WHEEL_SCALE_VELOCITY);
+      const zoom = Math.exp(wheel * wheelVelocity);
 
       scaleAt(zoom, point);
     },
@@ -131,25 +122,19 @@ export default function createScaleModule(config: ScaleConfig): ScaleModule {
     scaleTo(scale, pivot) {
       scaleAt(scale / config.state.getScale(), pivot ?? centerPoint());
     },
-    zoomIn(step = ZOOM_STEP) {
+    zoomIn(step = zoomStep) {
       scaleAt(1 + step, centerPoint());
     },
-    zoomOut(step = ZOOM_STEP) {
+    zoomOut(step = zoomStep) {
       scaleAt(1 / (1 + step), centerPoint());
     },
     buttonScaleBy(delta) {
-      scaleAt(
-        (config.state.getScale() + delta) / config.state.getScale(),
-        centerPoint(),
-      );
+      scaleAt((config.state.getScale() + delta) / config.state.getScale(), centerPoint());
     },
   };
 }
 
 function midPointCalculator(rect: Rect) {
   return (a: Point, b: Point): Point =>
-    calculateMiddlePoint(
-      convertToRelativeCoords(a, rect),
-      convertToRelativeCoords(b, rect),
-    );
+    calculateMiddlePoint(convertToRelativeCoords(a, rect), convertToRelativeCoords(b, rect));
 }

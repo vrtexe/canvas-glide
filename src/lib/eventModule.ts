@@ -1,13 +1,20 @@
-import type { MoveModule } from './moveModule';
-import { extractPoint, type Point } from './pointUtils';
-import type { ScaleModule } from './scaleModule';
+import type { MoveModule } from "./moveModule";
+import { extractPoint, type Point } from "./pointUtils";
+import type { ScaleModule } from "./scaleModule";
+
+export type CanvasPointerEvents = {
+  onPointerDown: (e: PointerEvent) => void;
+  onPointerMove: (e: PointerEvent) => void;
+  onPointerUp: (e: PointerEvent) => void;
+  onWheel: (e: WheelEvent) => void;
+};
 
 export type CanvasPointerEventProps = {
   moveModule: MoveModule;
   scaleModule: ScaleModule;
 };
 
-export function canvasPointerEvents(props: CanvasPointerEventProps) {
+export function canvasPointerEvents(props: CanvasPointerEventProps): CanvasPointerEvents {
   const { moveModule, scaleModule } = props;
 
   const pointers: Map<number, Point> = new Map();
@@ -18,8 +25,7 @@ export function canvasPointerEvents(props: CanvasPointerEventProps) {
   const onPointerDown = (e: PointerEvent) => {
     e.stopPropagation();
 
-    if (e.currentTarget instanceof Element)
-      e.currentTarget?.setPointerCapture(e.pointerId);
+    if (e.currentTarget instanceof Element) e.currentTarget?.setPointerCapture(e.pointerId);
 
     const pointer = pointers.get(e.pointerId);
     if (pointer) {
@@ -78,8 +84,7 @@ export function canvasPointerEvents(props: CanvasPointerEventProps) {
   const onPointerUp = (e: PointerEvent) => {
     e.preventDefault();
 
-    if (e.currentTarget instanceof Element)
-      e.currentTarget?.releasePointerCapture(e.pointerId);
+    if (e.currentTarget instanceof Element) e.currentTarget?.releasePointerCapture(e.pointerId);
 
     pointers.delete(e.pointerId);
     scaleModule.cleanup();
@@ -105,7 +110,7 @@ export function canvasPointerEvents(props: CanvasPointerEventProps) {
     e.stopPropagation();
     e.preventDefault();
 
-    scaleModule.wheelScale(e.deltaY, () => extractPoint(e));
+    scaleModule.wheelScale(e.deltaY, extractPoint(e));
   };
 
   return {

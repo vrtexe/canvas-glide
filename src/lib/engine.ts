@@ -1,13 +1,14 @@
-import createInteractiveCanvasModule from './interactiveModule';
-import type { ConstraintConfig } from './constraints';
-import type { MoveOptions } from './moveModule';
-import type { Point, Rect } from './pointUtils';
-import type { ScaleOptions } from './scaleModule';
-import { initState, type EngineStateOptions } from './state';
+import { createInteractiveCanvasModule } from "./interactiveModule";
+import type { ConstraintConfig } from "./constraints";
+import type { CanvasPointerEvents } from "./eventModule";
+import type { MoveModule, MoveOptions } from "./moveModule";
+import type { Point, Rect } from "./pointUtils";
+import type { ScaleModule, ScaleOptions } from "./scaleModule";
+import { initState, type EngineState, type EngineStateOptions } from "./state";
 
-type EngineOptions = {
-  viewport: () => Rect | null;
-  canvas: () => Rect | null;
+export type CanvasEngineOptions = {
+  getViewportRect: () => Rect | null;
+  getCanvasRect: () => Rect | null;
 
   state?: EngineStateOptions;
 
@@ -16,14 +17,49 @@ type EngineOptions = {
   constraints?: ConstraintConfig;
 };
 
+/**
+ * The flat members are the everyday API; the *Service objects expose the
+ * underlying modules for full control. The flat names are mapped explicitly
+ * (never spread) so a name can exist only once — a collision is a compile
+ * error here instead of a silent override. Signatures are borrowed from the
+ * modules via indexed access, so they can never drift out of sync.
+ */
+export type CanvasEngine = EngineState & {
+  stateService: EngineState;
+  scaleService: ScaleModule;
+  moveService: MoveModule;
+
+  zoomIn: ScaleModule['zoomIn'];
+  zoomOut: ScaleModule['zoomOut'];
+  zoomTo: ScaleModule['scaleTo'];
+  zoomAt: ScaleModule['scaleAt'];
+  zoomBy: ScaleModule['buttonScaleBy'];
+  wheelZoom: ScaleModule['wheelScale'];
+  pinchStart: ScaleModule['start'];
+  pinch: ScaleModule['gestureScale'];
+  pinchEnd: ScaleModule['cleanup'];
+  isZoomEnabled: ScaleModule['isEnabled'];
+
+  panStart: MoveModule['start'];
+  pan: MoveModule['move'];
+  panTo: MoveModule['moveTo'];
+  panEnd: MoveModule['cleanup'];
+  isPanEnabled: MoveModule['isEnabled'];
+
+  reset: () => void;
+  fit: () => void;
+  center: () => void;
+
+  event: CanvasPointerEvents;
+};
 
 export function createEngine({
-  viewport: getViewportRect,
-  canvas: getCanvasRect,
+  getViewportRect: getViewportRect,
+  getCanvasRect: getCanvasRect,
   state: stateOptions,
   move: moveOptions,
   constraints,
-}: EngineOptions) {
+}: CanvasEngineOptions): CanvasEngine {
   const state = initState(stateOptions);
 
   const interactiveModule = createInteractiveCanvasModule({
@@ -33,7 +69,7 @@ export function createEngine({
     getViewportRect(): Rect {
       const viewport = getViewportRect?.();
       if (!viewport) {
-        throw new Error('Viewport not found');
+        throw new Error("Viewport not found");
       }
       return viewport;
     },
@@ -68,10 +104,37 @@ export function createEngine({
 
   const reset = fit;
 
+  const scale = interactiveModule.scaleService;
+  const move = interactiveModule.moveService;
+
   return {
     stateService: state,
-    scaleService: interactiveModule.scaleService,
-    moveService: interactiveModule.moveService,
+    scaleService: scale,
+    moveService: move,
+
+    getTransform: state.getTransform,
+    setTransform: state.setTransform,
+    getOrigin: state.getOrigin,
+    setOrigin: state.setOrigin,
+    getScale: state.getScale,
+    setScale: state.setScale,
+
+    zoomIn: scale.zoomIn,
+    zoomOut: scale.zoomOut,
+    zoomTo: scale.scaleTo,
+    zoomAt: scale.scaleAt,
+    zoomBy: scale.buttonScaleBy,
+    wheelZoom: scale.wheelScale,
+    pinchStart: scale.start,
+    pinch: scale.gestureScale,
+    pinchEnd: scale.cleanup,
+    isZoomEnabled: scale.isEnabled,
+
+    panStart: move.start,
+    pan: move.move,
+    panTo: move.moveTo,
+    panEnd: move.cleanup,
+    isPanEnabled: move.isEnabled,
 
     reset,
     fit,
@@ -80,5 +143,3 @@ export function createEngine({
     event: interactiveModule.events,
   };
 }
-
-export default createEngine;

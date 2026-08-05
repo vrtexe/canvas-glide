@@ -26,7 +26,7 @@ export type MoveModule = {
  * @param config
  * @returns
  */
-export default function createMovementModule(config: MoveConfig): MoveModule {
+export function createMovementModule(config: MoveConfig): MoveModule {
   let startPoint: Point | undefined;
   let startOrigin: Point | undefined;
   let isMoving = false;
