@@ -29,22 +29,22 @@ export type CanvasEngine = EngineState & {
   scaleService: ScaleModule;
   moveService: MoveModule;
 
-  zoomIn: ScaleModule['zoomIn'];
-  zoomOut: ScaleModule['zoomOut'];
-  zoomTo: ScaleModule['scaleTo'];
-  zoomAt: ScaleModule['scaleAt'];
-  zoomBy: ScaleModule['buttonScaleBy'];
-  wheelZoom: ScaleModule['wheelScale'];
-  pinchStart: ScaleModule['start'];
-  pinch: ScaleModule['gestureScale'];
-  pinchEnd: ScaleModule['cleanup'];
-  isZoomEnabled: ScaleModule['isEnabled'];
+  zoomIn: ScaleModule["zoomIn"];
+  zoomOut: ScaleModule["zoomOut"];
+  zoomTo: ScaleModule["scaleTo"];
+  zoomAt: ScaleModule["scaleAt"];
+  zoomBy: ScaleModule["buttonScaleBy"];
+  wheelZoom: ScaleModule["wheelScale"];
+  pinchStart: ScaleModule["start"];
+  pinch: ScaleModule["gestureScale"];
+  pinchEnd: ScaleModule["cleanup"];
+  isZoomEnabled: ScaleModule["isEnabled"];
 
-  panStart: MoveModule['start'];
-  pan: MoveModule['move'];
-  panTo: MoveModule['moveTo'];
-  panEnd: MoveModule['cleanup'];
-  isPanEnabled: MoveModule['isEnabled'];
+  panStart: MoveModule["start"];
+  pan: MoveModule["move"];
+  panTo: MoveModule["moveTo"];
+  panEnd: MoveModule["cleanup"];
+  isPanEnabled: MoveModule["isEnabled"];
 
   reset: () => void;
   fit: () => void;
@@ -58,6 +58,7 @@ export function createEngine({
   getCanvasRect: getCanvasRect,
   state: stateOptions,
   move: moveOptions,
+  scale: scaleOptions,
   constraints,
 }: CanvasEngineOptions): CanvasEngine {
   const state = initState(stateOptions);
@@ -65,6 +66,7 @@ export function createEngine({
   const interactiveModule = createInteractiveCanvasModule({
     state,
     move: moveOptions,
+    scale: scaleOptions,
     constraints,
     getViewportRect(): Rect {
       const viewport = getViewportRect?.();

@@ -57,6 +57,7 @@ export function createInteractiveCanvasModule(
     constrainScale,
     constrainOrigin,
     rect: getViewportRect,
+    ...(props.scale || {})
   });
 
   const events = canvasPointerEvents({

@@ -1,12 +1,9 @@
-import type { Point, Rect } from './pointUtils';
+import type { Point, Rect } from "./pointUtils";
 
 export const DEFAULT_ZOOM_CONSTRAINTS: Constraint = [0.25, 8];
 export const CONSTRAINT_THRESHOLD = 0;
 
-export const originConstrainerDefault: ConstraintOptions<
-  Point,
-  PointConstraint
-> = {
+export const originConstrainerDefault: ConstraintOptions<Point, PointConstraint> = {
   enabled: false,
 } as const;
 
@@ -16,7 +13,6 @@ export const defaultScaleConstraints: ConstraintOptions<number, Constraint> = {
 } as const;
 
 export type ConstraintConfig = {
-  enabled?: boolean;
   origin?: ConstraintOptions<Point, PointConstraint>;
   scale?: ConstraintOptions<number, Constraint>;
 };
@@ -43,10 +39,7 @@ export function constrainTo(value: number, min: number, max: number) {
   return Math.max(Math.min(value, max), min);
 }
 
-export function constrainPoint(
-  value: Point,
-  constraints: PointConstraint,
-): Point {
+export function constrainPoint(value: Point, constraints: PointConstraint): Point {
   return {
     x: constrain(value.x, constraints.x),
     y: constrain(value.y, constraints.y),
@@ -71,9 +64,7 @@ export function createOriginConstrainer(
   return (value: Point): Point => value;
 }
 
-export function createScaleConstrainer(
-  config: ConstraintOptions<number, Constraint> | undefined,
-): OriginConstrainer {
+export function createScaleConstrainer(config: ConstraintOptions<number, Constraint> | undefined): OriginConstrainer {
   if (config?.enabled === false) {
     return (value: number): number => value;
   }
@@ -97,13 +88,7 @@ export function getConstraintsAt(rect: Rect, scale: number): PointConstraint {
   const halfVisibleY = vh / (2 * scale);
 
   return {
-    x: [
-      -halfVisibleX + CONSTRAINT_THRESHOLD,
-      vw + halfVisibleX - CONSTRAINT_THRESHOLD,
-    ],
-    y: [
-      -halfVisibleY + CONSTRAINT_THRESHOLD,
-      vh + halfVisibleY - CONSTRAINT_THRESHOLD,
-    ],
+    x: [-halfVisibleX + CONSTRAINT_THRESHOLD, vw + halfVisibleX - CONSTRAINT_THRESHOLD],
+    y: [-halfVisibleY + CONSTRAINT_THRESHOLD, vh + halfVisibleY - CONSTRAINT_THRESHOLD],
   };
 }

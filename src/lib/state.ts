@@ -1,4 +1,4 @@
-import type { Point } from './pointUtils';
+import type { Point } from "./pointUtils";
 
 export type Transform = {
   origin: Point;
@@ -56,7 +56,7 @@ export function initState(options?: EngineStateOptions): EngineState {
     const scaleChanged = setScaleInternal(newTransform.scale, false);
 
     if (originChanged || scaleChanged) {
-      callTransformChange(newTransform);
+      callTransformChange(copyTransform(newTransform));
     }
   }
 
@@ -65,9 +65,7 @@ export function initState(options?: EngineStateOptions): EngineState {
   }
 
   function isOriginUnchanged(newOrigin: Point) {
-    return (
-      transform.origin.x === newOrigin.x && transform.origin.y === newOrigin.y
-    );
+    return transform.origin.x === newOrigin.x && transform.origin.y === newOrigin.y;
   }
 
   function setOrigin(newOrigin: Point) {

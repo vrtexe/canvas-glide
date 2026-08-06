@@ -89,7 +89,9 @@ export function canvasPointerEvents(props: CanvasPointerEventProps): CanvasPoint
     pointers.delete(e.pointerId);
     scaleModule.cleanup();
 
-    if (pointers.size === 1) {
+    if (pointers.size >= 2) {
+      scaleModule.start(pointers.values());
+    } else if (pointers.size === 1) {
       const firstPointer = pointers.values().next().value;
       firstPointer && moveModule.start(firstPointer);
     } else {

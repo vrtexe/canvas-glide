@@ -1,5 +1,5 @@
 import { type Point } from './pointUtils.ts';
-import type { EngineState } from './state.ts';
+import { copyPoint, type EngineState } from './state.ts';
 
 export type MoveOptions = {
   enabled?: boolean;
@@ -37,7 +37,7 @@ export function createMovementModule(config: MoveConfig): MoveModule {
         isMoving = true;
         config.onIsMovingChange?.(isMoving);
       }
-      startPoint = point;
+      startPoint = copyPoint(point);
       startOrigin = { ...config.state.getOrigin() };
     },
     cleanup: () => {
