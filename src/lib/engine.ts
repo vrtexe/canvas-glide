@@ -1,10 +1,10 @@
-import { createInteractiveCanvasModule } from "./interactiveModule";
-import type { ConstraintConfig } from "./constraints";
-import type { CanvasPointerEvents } from "./eventModule";
-import type { MoveModule, MoveOptions } from "./moveModule";
-import type { Point, Rect } from "./pointUtils";
-import type { ScaleModule, ScaleOptions } from "./scaleModule";
-import { initState, type EngineState, type EngineStateOptions } from "./state";
+import { createInteractiveCanvasModule } from "./interactiveModule.ts";
+import type { ConstraintConfig } from "./constraints.ts";
+import type { CanvasPointerEvents } from "./eventModule.ts";
+import type { MoveModule, MoveOptions } from "./moveModule.ts";
+import type { Rect } from "./pointUtils.ts";
+import type { ScaleModule, ScaleOptions } from "./scaleModule.ts";
+import { initState, type EngineState, type EngineStateOptions } from "./state.ts";
 
 export type CanvasEngineOptions = {
   getViewportRect: () => Rect | null;
@@ -62,49 +62,43 @@ export function createEngine({
   constraints,
 }: CanvasEngineOptions): CanvasEngine {
   const state = initState(stateOptions);
+  const initial = stateOptions?.initial && state.getTransform();
 
   const interactiveModule = createInteractiveCanvasModule({
     state,
     move: moveOptions,
     scale: scaleOptions,
     constraints,
-    getViewportRect(): Rect {
-      const viewport = getViewportRect?.();
-      if (!viewport) {
-        throw new Error("Viewport not found");
-      }
-      return viewport;
-    },
+    getViewportRect,
   });
 
-  const getCenterOrigin = (zoomOverride = state.getScale()): Point => {
-    const viewport = getViewportRect?.();
-    const canvas = getCanvasRect?.();
+  const centerOn = (zoom: number): void => {
+    const viewport = getViewportRect();
+    const canvas = getCanvasRect();
 
     if (!viewport || !canvas) {
-      return state.getOrigin();
+      return;
     }
 
-    const viewportRect = viewport;
+    const scale = interactiveModule.constrainScale(zoom);
 
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-
-    return {
-      x: canvasWidth / 2 - viewportRect.width / (2 * zoomOverride),
-      y: canvasHeight / 2 - viewportRect.height / (2 * zoomOverride),
-    };
-  };
-
-  const centerOn = (zoom: number): void => {
-    state.setTransform({ origin: getCenterOrigin(zoom), scale: zoom });
+    state.setTransform(
+      {
+        origin: {
+          x: canvas.width / 2 - viewport.width / (2 * scale),
+          y: canvas.height / 2 - viewport.height / (2 * scale),
+        },
+        scale,
+      },
+      interactiveModule.constrainOrigin,
+    );
   };
 
   const center = (): void => centerOn(state.getScale());
 
   const fit = (): void => centerOn(1);
 
-  const reset = fit;
+  const reset = (): void => (initial ? state.setTransform(initial) : fit());
 
   const scale = interactiveModule.scaleService;
   const move = interactiveModule.moveService;

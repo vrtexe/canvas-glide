@@ -1,5 +1,5 @@
-import { calculateDistance, calculateMiddlePoint, convertToRelativeCoords, type Point, type Rect } from "./pointUtils";
-import { copyPoint, copyTransform, type EngineState, type Transform } from "./state";
+import { calculateDistance, calculateMiddlePoint, convertToRelativeCoords, type Point, type Rect } from "./pointUtils.ts";
+import { copyPoint, isSameTransform, type EngineState, type Transform } from "./state.ts";
 
 export const WHEEL_SCALE_VELOCITY = 0.0015;
 export const ZOOM_STEP = 0.1;
@@ -12,10 +12,10 @@ export type ScaleOptions = {
 
 export type ScaleConfig = ScaleOptions & {
   state: EngineState;
-  scale: (scale: number, point: Point) => void;
-  rect: () => Rect;
+  scale: (scale: number, origin: Point) => void;
+  rect: () => Rect | null;
   constrainScale: (scale: number) => number;
-  constrainOrigin: (origin: Point) => Point;
+  panEnabled?: () => boolean;
 };
 
 export type ScaleModule = {
@@ -32,16 +32,22 @@ export type ScaleModule = {
   isEnabled: () => boolean;
 };
 
+type Pinch = {
+  startPoints: Point[];
+  startState: Transform;
+  lastPoints: Point[];
+  lastState: Transform;
+};
+
 export function createScaleModule(config: ScaleConfig): ScaleModule {
-  const wheelVelocity = config.wheelVelocity || WHEEL_SCALE_VELOCITY;
-  const zoomStep = config.zoomStep || ZOOM_STEP;
+  const wheelVelocity = config.wheelVelocity ?? WHEEL_SCALE_VELOCITY;
+  const zoomStep = config.zoomStep ?? ZOOM_STEP;
 
-  let startPoints: Point[] = [];
-  let startState: Transform | undefined;
+  let pinch: Pinch | undefined;
 
-  function centerPoint(): Point {
-    const rect = config.rect();
-    return { x: rect.width / 2, y: rect.height / 2 };
+  function anchorAt(points: Point[]): Pinch {
+    const state = config.state.getTransform();
+    return { startPoints: points, startState: state, lastPoints: points, lastState: state };
   }
 
   function scaleAt(scale: number, point: Point) {
@@ -52,31 +58,38 @@ export function createScaleModule(config: ScaleConfig): ScaleModule {
     const nextScale = config.constrainScale(scale * currentScale);
     const prevOrigin = config.state.getOrigin();
 
-    const nextOrigin = config.constrainOrigin({
+    config.scale(nextScale, {
       x: prevOrigin.x - (px / nextScale - px / currentScale),
       y: prevOrigin.y - (py / nextScale - py / currentScale),
     });
+  }
 
-    config.scale(nextScale, nextOrigin);
+  function scaleAtCenter(scale: number) {
+    const rect = config.rect();
+    if (rect) scaleAt(scale, { x: rect.width / 2, y: rect.height / 2 });
   }
 
   return {
     isEnabled: () => config.enabled !== false,
     start(points: Iterable<Point>) {
-      startPoints = [...points].map(copyPoint);
-      startState = copyTransform(config.state.getTransform());
+      pinch = anchorAt([...points].slice(0, 2).map(copyPoint));
     },
     cleanup() {
-      startPoints = [];
-      startState = undefined;
+      pinch = undefined;
     },
     gestureScale(pointers) {
-      if (startPoints.length !== 2 || !startState) {
+      const rect = config.rect();
+      if (!pinch || pinch.startPoints.length !== 2 || !rect) {
         return;
       }
 
+      // A zoom or pan from elsewhere since the last step: continue from it instead of overwriting it.
+      if (!isSameTransform(pinch.lastState, config.state.getTransform())) {
+        pinch = anchorAt(pinch.lastPoints);
+      }
+
       const [p1, p2] = pointers;
-      const [startP1, startP2] = startPoints;
+      const [startP1, startP2] = pinch.startPoints;
 
       const startDistance = calculateDistance(startP1, startP2);
       const currentDistance = calculateDistance(p1, p2);
@@ -85,47 +98,49 @@ export function createScaleModule(config: ScaleConfig): ScaleModule {
         return;
       }
 
-      const rect = config.rect();
-      const startScale = startState.scale;
-      const startOrigin = startState.origin;
+      const startScale = pinch.startState.scale;
+      const startOrigin = pinch.startState.origin;
 
       const midpoint = midPointCalculator(rect);
 
       const startMid = midpoint(startP1, startP2);
-      const currentMid = midpoint(p1, p2);
+      const currentMid = config.panEnabled?.() === false ? startMid : midpoint(p1, p2);
 
       const nextScale = config.constrainScale(startScale * (currentDistance / startDistance));
 
-      const origin: Point = {
+      config.scale(nextScale, {
         x: startOrigin.x + startMid.x / startScale - currentMid.x / nextScale,
         y: startOrigin.y + startMid.y / startScale - currentMid.y / nextScale,
-      };
+      });
 
-      config.scale(nextScale, origin);
+      pinch.lastPoints = [p1, p2].map(copyPoint);
+      pinch.lastState = config.state.getTransform();
     },
     wheelScale(scroll, absolutePoint) {
-      const point = convertToRelativeCoords(absolutePoint, config.rect());
-      const zoom = Math.exp(-scroll * wheelVelocity);
-      scaleAt(zoom, point);
+      const rect = config.rect();
+      if (!rect) return;
+
+      scaleAt(Math.exp(-scroll * wheelVelocity), convertToRelativeCoords(absolutePoint, rect));
     },
     buttonScale(newScale) {
-      const currentScale = config.state.getScale();
-      scaleAt(newScale / currentScale, centerPoint());
+      scaleAtCenter(newScale / config.state.getScale());
     },
     scaleAt(scale: number, point: Point) {
       scaleAt(scale, point);
     },
     scaleTo(scale, pivot) {
-      scaleAt(scale / config.state.getScale(), pivot ?? centerPoint());
+      const factor = scale / config.state.getScale();
+      if (pivot) scaleAt(factor, pivot);
+      else scaleAtCenter(factor);
     },
     zoomIn(step = zoomStep) {
-      scaleAt(1 + step, centerPoint());
+      scaleAtCenter(1 + step);
     },
     zoomOut(step = zoomStep) {
-      scaleAt(1 / (1 + step), centerPoint());
+      scaleAtCenter(1 / (1 + step));
     },
     buttonScaleBy(delta) {
-      scaleAt((config.state.getScale() + delta) / config.state.getScale(), centerPoint());
+      scaleAtCenter((config.state.getScale() + delta) / config.state.getScale());
     },
   };
 }

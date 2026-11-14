@@ -1,11 +1,12 @@
-import type { MoveModule } from "./moveModule";
-import { extractPoint, type Point } from "./pointUtils";
-import type { ScaleModule } from "./scaleModule";
+import type { MoveModule } from "./moveModule.ts";
+import { extractPoint, type Point } from "./pointUtils.ts";
+import type { ScaleModule } from "./scaleModule.ts";
 
 export type CanvasPointerEvents = {
   onPointerDown: (e: PointerEvent) => void;
   onPointerMove: (e: PointerEvent) => void;
   onPointerUp: (e: PointerEvent) => void;
+  onPointerCancel: (e: PointerEvent) => void;
   onWheel: (e: WheelEvent) => void;
 };
 
@@ -21,94 +22,88 @@ export function canvasPointerEvents(props: CanvasPointerEventProps): CanvasPoint
 
   let moveEnabled: boolean = false;
   let scaleEnabled: boolean = false;
+  // The pan follows one pointer only; other pointers either pinch or are ignored.
+  let panPointerId: number | undefined;
 
   const onPointerDown = (e: PointerEvent) => {
+    if (e.button !== 0 || (!moveModule.isEnabled() && !scaleModule.isEnabled())) {
+      return;
+    }
+
     e.stopPropagation();
 
-    if (e.currentTarget instanceof Element) e.currentTarget?.setPointerCapture(e.pointerId);
+    if (e.currentTarget instanceof Element) e.currentTarget.setPointerCapture(e.pointerId);
 
-    const pointer = pointers.get(e.pointerId);
-    if (pointer) {
-      updatePointer(e);
-    } else {
-      pointers.set(e.pointerId, {
-        x: e.clientX,
-        y: e.clientY,
-      });
-    }
+    pointers.set(e.pointerId, extractPoint(e));
 
     computeActionState();
 
     if (scaleEnabled) {
       scaleModule.start(pointers.values());
-    } else if (moveEnabled) {
+    } else if (moveEnabled && (panPointerId === undefined || panPointerId === e.pointerId)) {
+      panPointerId = e.pointerId;
       moveModule.start(extractPoint(e));
     }
   };
 
-  function updatePointer(e: PointerEvent) {
+  const onPointerMove = (e: PointerEvent) => {
     const pointer = pointers.get(e.pointerId);
-    if (!pointer) {
-      return false;
+    if (!pointer || (!moveEnabled && !scaleEnabled)) {
+      return;
     }
+
+    e.stopPropagation();
+    e.preventDefault();
 
     pointer.x = e.clientX;
     pointer.y = e.clientY;
 
-    return true;
-  }
-
-  const onPointerMove = (e: PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    if (!moveEnabled && !scaleEnabled) {
-      return;
-    }
-
-    if (pointers.get(e.pointerId)) {
-      // Keep each active pointer's LIVE position up to date. Without this the
-      // pinch would only ever see the initial down-positions and never detect
-      // any spread, so gestures could not scale.
-      // const pointersValue = pointers;
-      updatePointer(e);
-    }
-
     if (scaleEnabled) {
       scaleModule.gestureScale(pointers.values());
-    } else if (moveEnabled) {
-      moveModule.move(extractPoint(e));
+    } else if (e.pointerId === panPointerId) {
+      moveModule.move(pointer);
     }
   };
 
   const onPointerUp = (e: PointerEvent) => {
+    if (!pointers.delete(e.pointerId)) {
+      return;
+    }
+
     e.preventDefault();
 
-    if (e.currentTarget instanceof Element) e.currentTarget?.releasePointerCapture(e.pointerId);
+    if (e.currentTarget instanceof Element && e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
 
-    pointers.delete(e.pointerId);
     scaleModule.cleanup();
+    panPointerId = undefined;
 
-    if (pointers.size >= 2) {
+    computeActionState();
+
+    if (scaleEnabled) {
       scaleModule.start(pointers.values());
-    } else if (pointers.size === 1) {
-      const firstPointer = pointers.values().next().value;
-      firstPointer && moveModule.start(firstPointer);
+    } else if (moveEnabled) {
+      const [id, point] = pointers.entries().next().value!;
+      panPointerId = id;
+      moveModule.start(point);
     } else {
       moveModule.cleanup();
     }
-
-    computeActionState();
   };
 
   function computeActionState() {
     const devices = pointers.size;
 
     moveEnabled = moveModule.isEnabled() && devices >= 1;
-    scaleEnabled = scaleModule.isEnabled() && devices === 2;
+    scaleEnabled = scaleModule.isEnabled() && devices >= 2;
   }
 
   const onWheel: (e: WheelEvent) => void = (e) => {
+    if (!scaleModule.isEnabled()) {
+      return;
+    }
+
     e.stopPropagation();
     e.preventDefault();
 
@@ -121,6 +116,7 @@ export function canvasPointerEvents(props: CanvasPointerEventProps): CanvasPoint
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onPointerCancel: onPointerUp,
     onWheel,
   };
 }

@@ -1,9 +1,9 @@
-import type { Rect } from './pointUtils';
-import { canvasPointerEvents } from './eventModule';
-import { createMovementModule, type MoveOptions } from './moveModule';
-import { type Point } from './pointUtils';
-import { createScaleModule, type ScaleOptions } from './scaleModule';
-import type { EngineState } from './state';
+import type { Rect } from './pointUtils.ts';
+import { canvasPointerEvents } from './eventModule.ts';
+import { createMovementModule, type MoveOptions } from './moveModule.ts';
+import { type Point } from './pointUtils.ts';
+import { createScaleModule, type ScaleOptions } from './scaleModule.ts';
+import type { EngineState } from './state.ts';
 import {
   createOriginConstrainer,
   createScaleConstrainer,
@@ -12,7 +12,7 @@ import {
   type ConstraintConfig,
   type ConstraintOptions,
   type PointConstraint,
-} from './constraints';
+} from './constraints.ts';
 
 export type InteractiveCanvasModuleProps = {
   state: EngineState;
@@ -23,7 +23,7 @@ export type InteractiveCanvasModuleProps = {
   constraints?: ConstraintConfig;
 
   zoomAt?: (scale: number, point: Point) => void;
-  getViewportRect: () => Rect;
+  getViewportRect: () => Rect | null;
 };
 
 export function createInteractiveCanvasModule(
@@ -34,6 +34,7 @@ export function createInteractiveCanvasModule(
   const scaleConstrainConfig = {
     ...defaultScaleConstraints,
     ...(constraints?.scale || {}),
+    constraints: constraints?.scale?.constraints ?? defaultScaleConstraints.constraints,
   };
   const originConstrainConfig: ConstraintOptions<Point, PointConstraint> = {
     ...originConstrainerDefault,
@@ -53,9 +54,9 @@ export function createInteractiveCanvasModule(
   const scaleService = createScaleModule({
     state,
     scale: (scale, origin) =>
-      state.setTransform({ origin: origin, scale: scale }),
+      state.setTransform({ origin: origin, scale: scale }, constrainOrigin),
     constrainScale,
-    constrainOrigin,
+    panEnabled: () => moveService.isEnabled(),
     rect: getViewportRect,
     ...(props.scale || {})
   });
@@ -69,5 +70,7 @@ export function createInteractiveCanvasModule(
     scaleService,
     moveService,
     events,
+    constrainScale,
+    constrainOrigin,
   };
 }

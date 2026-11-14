@@ -1,4 +1,4 @@
-import type { Point } from "./pointUtils";
+import type { Point } from "./pointUtils.ts";
 
 export type Transform = {
   origin: Point;
@@ -14,7 +14,7 @@ export type EngineStateOptions = {
 
 export type EngineState = {
   getTransform: () => Transform;
-  setTransform: (newTransform: Transform) => void;
+  setTransform: (newTransform: Transform, constrainOrigin?: (origin: Point) => Point) => void;
   getOrigin: () => Point;
   setOrigin: (newOrigin: Point) => void;
   getScale: () => number;
@@ -35,6 +35,10 @@ export function copyPoint(point: Point): Point {
   };
 }
 
+export function isSameTransform(a: Transform, b: Transform): boolean {
+  return a.scale === b.scale && a.origin.x === b.origin.x && a.origin.y === b.origin.y;
+}
+
 const defaultTransform: Transform = {
   origin: { x: 0, y: 0 },
   scale: 1,
@@ -42,87 +46,51 @@ const defaultTransform: Transform = {
 
 export function initState(options?: EngineStateOptions): EngineState {
   const { onTransformChange, onScaleChange, onOriginChange } = options || {};
-  const transform: Transform = {
+  const transform = copyTransform({
     ...defaultTransform,
     ...(options?.initial || {}),
-  };
+  });
 
   function getTransform() {
-    return transform;
+    return copyTransform(transform);
   }
 
-  function setTransform(newTransform: Transform) {
-    const originChanged = setOriginInternal(newTransform.origin, false);
-    const scaleChanged = setScaleInternal(newTransform.scale, false);
+  // The scale is written before the origin is constrained, so a constrainer that reads the scale sees the new one.
+  function setTransform(newTransform: Transform, constrainOrigin?: (origin: Point) => Point) {
+    const previous = copyTransform(transform);
 
-    if (originChanged || scaleChanged) {
-      callTransformChange(copyTransform(newTransform));
+    transform.scale = newTransform.scale;
+    const origin = constrainOrigin ? constrainOrigin(newTransform.origin) : newTransform.origin;
+
+    if (![origin.x, origin.y, newTransform.scale].every(Number.isFinite)) {
+      transform.scale = previous.scale;
+      return;
     }
+
+    transform.origin = copyPoint(origin);
+
+    const originChanged = previous.origin.x !== origin.x || previous.origin.y !== origin.y;
+    const scaleChanged = previous.scale !== transform.scale;
+
+    if (originChanged) onOriginChange?.(copyPoint(origin));
+    if (scaleChanged) onScaleChange?.(transform.scale);
+    if (originChanged || scaleChanged) onTransformChange?.(copyTransform(transform));
   }
 
   function getOrigin() {
-    return transform.origin;
-  }
-
-  function isOriginUnchanged(newOrigin: Point) {
-    return transform.origin.x === newOrigin.x && transform.origin.y === newOrigin.y;
+    return copyPoint(transform.origin);
   }
 
   function setOrigin(newOrigin: Point) {
-    setOriginInternal(newOrigin, true);
-  }
-
-  function setOriginInternal(newOrigin: Point, pushEvent = true) {
-    if (isOriginUnchanged(newOrigin)) {
-      return false;
-    }
-
-    transform.origin.x = newOrigin.x;
-    transform.origin.y = newOrigin.y;
-
-    callOriginChange(newOrigin);
-
-    if (!pushEvent) return true;
-    callTransformChange(copyTransform(transform));
-
-    return true;
+    setTransform({ origin: newOrigin, scale: transform.scale });
   }
 
   function setScale(newValue: number) {
-    setScaleInternal(newValue, true);
-  }
-
-  function setScaleInternal(newValue: number, pushEvent = true) {
-    if (transform.scale === newValue) {
-      return false;
-    }
-
-    transform.scale = newValue;
-    callScaleChange(newValue);
-
-    if (!pushEvent) return true;
-    callTransformChange(copyTransform(transform));
-
-    return true;
+    setTransform({ origin: transform.origin, scale: newValue });
   }
 
   function getScale() {
     return transform.scale;
-  }
-
-  function callTransformChange(newValue: Transform) {
-    if (!onTransformChange) return;
-    onTransformChange(newValue);
-  }
-
-  function callOriginChange(newValue: Point) {
-    if (!onOriginChange) return;
-    onOriginChange(newValue);
-  }
-
-  function callScaleChange(newValue: number) {
-    if (!onScaleChange) return;
-    onScaleChange(newValue);
   }
 
   return {

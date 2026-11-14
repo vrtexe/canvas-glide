@@ -1,25 +1,58 @@
 {
   "name": "canvas-glide",
   "version": "1.0.0",
+  "description": "Framework-agnostic pan, zoom and pinch-to-zoom engine for HTML elements, images and canvas: mouse, touch, pen and wheel input, zoom limits, TypeScript, no runtime dependencies.",
+  "keywords": [
+    "pan-zoom",
+    "panzoom",
+    "pinch-zoom",
+    "pinch-to-zoom",
+    "zoom",
+    "pan",
+    "wheel-zoom",
+    "gestures",
+    "touch",
+    "pointer-events",
+    "canvas",
+    "infinite-canvas",
+    "image-viewer",
+    "viewport",
+    "headless",
+    "framework-agnostic",
+    "vanilla-js",
+    "javascript",
+    "typescript",
+    "zero-dependencies"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/vrtexe/canvas-glide#readme",
+  "bugs": {
+    "url": "https://github.com/vrtexe/canvas-glide/issues"
+  },
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vrtexe/canvas-glide.git"
+  },
   "exports": {
     ".": {
+      "types": "./dist/canvas-glide.d.ts",
       "import": "./dist/canvas-glide.js",
-      "types": "./dist/canvas-glide.d.ts"
+      "require": "./dist/canvas-glide.umd.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "dev": "vite",
     "build": "tsc && vite build",
-    "build:dev": "tsc && vite build --watch",
-    "preview": "vite preview"
+    "test": "vitest run",
+    "build:dev": "tsc && vite build --watch"
   },
   "devDependencies": {
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
-    "vite-plugin-dts": "^5.0.3"
+    "vite-plugin-dts": "^5.0.3",
+    "vitest": "^5.1.0"
   }
 }

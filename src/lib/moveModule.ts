@@ -1,5 +1,5 @@
 import { type Point } from './pointUtils.ts';
-import { copyPoint, type EngineState } from './state.ts';
+import { copyPoint, isSameTransform, type EngineState, type Transform } from './state.ts';
 
 export type MoveOptions = {
   enabled?: boolean;
@@ -20,6 +20,13 @@ export type MoveModule = {
   isEnabled: () => boolean;
 };
 
+type Drag = {
+  startPoint: Point;
+  startOrigin: Point;
+  lastPoint: Point;
+  lastTransform: Transform;
+};
+
 /**
  * origin = startOrigin − ((pointer − startPoint) / zoom)
  *
@@ -27,9 +34,14 @@ export type MoveModule = {
  * @returns
  */
 export function createMovementModule(config: MoveConfig): MoveModule {
-  let startPoint: Point | undefined;
-  let startOrigin: Point | undefined;
+  let drag: Drag | undefined;
   let isMoving = false;
+
+  function anchorAt(point: Point): Drag {
+    const transform = config.state.getTransform();
+    return { startPoint: point, startOrigin: transform.origin, lastPoint: point, lastTransform: transform };
+  }
+
   return {
     isEnabled: () => config.enabled !== false,
     start: (point: Point) => {
@@ -37,33 +49,39 @@ export function createMovementModule(config: MoveConfig): MoveModule {
         isMoving = true;
         config.onIsMovingChange?.(isMoving);
       }
-      startPoint = copyPoint(point);
-      startOrigin = { ...config.state.getOrigin() };
+      drag = anchorAt(copyPoint(point));
     },
     cleanup: () => {
       if (isMoving) {
         isMoving = false;
         config.onIsMovingChange?.(isMoving);
       }
-      startPoint = undefined;
-      startOrigin = undefined;
+      drag = undefined;
     },
     move: (point: Point) => {
-      if (!startPoint || !startOrigin) {
+      if (!drag) {
         return;
+      }
+
+      // A zoom or pan from elsewhere since the last step: continue from it instead of overwriting it.
+      if (!isSameTransform(drag.lastTransform, config.state.getTransform())) {
+        drag = anchorAt(drag.lastPoint);
       }
 
       const scale = config.state.getScale();
 
-      const dx = point.x - startPoint.x;
-      const dy = point.y - startPoint.y;
+      const dx = point.x - drag.startPoint.x;
+      const dy = point.y - drag.startPoint.y;
 
       config.move(
         config.constrainOrigin({
-          x: startOrigin.x - dx / scale,
-          y: startOrigin.y - dy / scale,
+          x: drag.startOrigin.x - dx / scale,
+          y: drag.startOrigin.y - dy / scale,
         }),
       );
+
+      drag.lastPoint = copyPoint(point);
+      drag.lastTransform = config.state.getTransform();
     },
     moveTo: (origin: Point) => {
       config.move(config.constrainOrigin(origin));

@@ -1,11 +1,9 @@
-import type { Point, Rect } from "./pointUtils";
+import type { Point, Rect } from "./pointUtils.ts";
 
 export const DEFAULT_ZOOM_CONSTRAINTS: Constraint = [0.25, 8];
 export const CONSTRAINT_THRESHOLD = 0;
 
-export const originConstrainerDefault: ConstraintOptions<Point, PointConstraint> = {
-  enabled: false,
-} as const;
+export const originConstrainerDefault: ConstraintOptions<Point, PointConstraint> = {};
 
 export const defaultScaleConstraints: ConstraintOptions<number, Constraint> = {
   enabled: true,
