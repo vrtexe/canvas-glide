@@ -1,6 +1,6 @@
 {
   "name": "canvas-glide",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Framework-agnostic pan, zoom and pinch-to-zoom engine for HTML elements, images and canvas: mouse, touch, pen and wheel input, zoom limits, TypeScript, no runtime dependencies.",
   "keywords": [
     "pan-zoom",
